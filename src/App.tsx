@@ -7,7 +7,7 @@ import BottomControls from './components/BottomControls';
 import SummaryModal from './components/SummaryModal';
 import TherapyJournal, { TherapyJournalEntry } from './components/TherapyJournal';
 import { EmotionState, AppMode, ChatMessage, TonePack } from './types';
-import { getGeminiResponse } from './services/gemini';
+import { getChatbotResponse } from './services/chatbot';
 
 const emotionCycle: EmotionState[] = [
   { name: 'calm', emoji: '😊', tooltip: 'User seems calm and focused.', score: 82, color: '#3b82f6', regulationPrompt: 'Maintain this calm state. Notice your steady breath.' },
@@ -119,45 +119,120 @@ const App: React.FC = () => {
 
   // Load saved journal entries from localStorage
   useEffect(() => {
-    const savedEntries = localStorage.getItem('therapyJournalEntries');
-    if (savedEntries) {
-      try {
-        const parsedEntries = JSON.parse(savedEntries);
-        // Convert string dates back to Date objects
-        const entriesWithDates = parsedEntries.map((entry: any) => ({
-          ...entry,
-          date: new Date(entry.date)
-        }));
-        setJournalEntries(entriesWithDates);
-      } catch (error) {
-        console.error('Failed to parse saved journal entries', error);
+    const loadEntries = () => {
+      const savedEntries = localStorage.getItem('therapyJournalEntries');
+      if (savedEntries) {
+        try {
+          const parsedEntries = JSON.parse(savedEntries);
+          // Convert string dates back to Date objects
+          const entriesWithDates = parsedEntries.map((entry: any) => ({
+            ...entry,
+            date: new Date(entry.date),
+            emotion: {
+              ...entry.emotion,
+              // Ensure emotion is properly reconstructed
+              name: entry.emotion?.name || 'calm',
+              emoji: entry.emotion?.emoji || '😊',
+              score: entry.emotion?.score || 50,
+              color: entry.emotion?.color || '#3b82f6',
+              tooltip: entry.emotion?.tooltip || '',
+              regulationPrompt: entry.emotion?.regulationPrompt || ''
+            }
+          }));
+          setJournalEntries(entriesWithDates);
+        } catch (error) {
+          console.error('Failed to parse saved journal entries', error);
+        }
       }
-    }
+    };
+    
+    loadEntries();
+    
+    // Also load entries when the window gains focus in case another tab made changes
+    window.addEventListener('focus', loadEntries);
+    return () => window.removeEventListener('focus', loadEntries);
   }, []);
 
   // Save journal entries to localStorage when they change
   useEffect(() => {
     if (journalEntries.length > 0) {
-      localStorage.setItem('therapyJournalEntries', JSON.stringify(journalEntries));
+      try {
+        // Convert Date objects to ISO strings for JSON serialization
+        const entriesToSave = journalEntries.map(entry => ({
+          ...entry,
+          date: entry.date.toISOString(),
+          emotion: {
+            ...entry.emotion,
+            // Only save the necessary emotion properties
+            name: entry.emotion.name,
+            emoji: entry.emotion.emoji,
+            score: entry.emotion.score,
+            color: entry.emotion.color,
+            tooltip: entry.emotion.tooltip,
+            regulationPrompt: entry.emotion.regulationPrompt
+          }
+        }));
+        localStorage.setItem('therapyJournalEntries', JSON.stringify(entriesToSave));
+      } catch (error) {
+        console.error('Failed to save journal entries', error);
+      }
+    } else {
+      // If no entries, clear the storage
+      localStorage.removeItem('therapyJournalEntries');
     }
   }, [journalEntries]);
 
   const handleSaveJournalEntry = async (notes: string) => {
-    setIsSavingJournal(true);
-    
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    const newEntry: TherapyJournalEntry = {
-      id: Date.now().toString(),
-      date: new Date(),
-      emotion: currentEmotion,
-      summary: `Session with ${currentEmotion.name} mood`,
-      notes: notes || undefined,
-    };
-    
-    setJournalEntries(prev => [newEntry, ...prev]);
-    setIsSavingJournal(false);
+    try {
+      setIsSavingJournal(true);
+      
+      // Simulate API call delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      const newEntry: TherapyJournalEntry = {
+        id: Date.now().toString(),
+        date: new Date(),
+        emotion: {
+          ...currentEmotion,
+          // Ensure all required emotion properties are included
+          name: currentEmotion.name || 'calm',
+          emoji: currentEmotion.emoji || '😊',
+          score: currentEmotion.score || 50,
+          color: currentEmotion.color || '#3b82f6',
+          tooltip: currentEmotion.tooltip || '',
+          regulationPrompt: currentEmotion.regulationPrompt || ''
+        },
+        summary: `Session with ${currentEmotion.name || 'calm'} mood`,
+        notes: notes?.trim() || undefined,
+      };
+      
+      // Update state with the new entry and switch to journal view
+      setJournalEntries(prev => {
+        const updatedEntries = [newEntry, ...prev];
+        // Immediately save to localStorage for better reliability
+        const entriesToSave = updatedEntries.map(entry => ({
+          ...entry,
+          date: entry.date.toISOString(),
+          emotion: {
+            name: entry.emotion.name,
+            emoji: entry.emotion.emoji,
+            score: entry.emotion.score,
+            color: entry.emotion.color,
+            tooltip: entry.emotion.tooltip,
+            regulationPrompt: entry.emotion.regulationPrompt
+          }
+        }));
+        localStorage.setItem('therapyJournalEntries', JSON.stringify(entriesToSave));
+        return updatedEntries;
+      });
+      
+      // Switch to journal view after saving
+      setShowJournal(true);
+    } catch (error) {
+      console.error('Failed to save journal entry', error);
+    } finally {
+      setIsSavingJournal(false);
+    }
   };
   
   const toggleJournalView = () => {
@@ -275,7 +350,11 @@ const App: React.FC = () => {
     setMessages(prev => [...prev, { id: typingMessageId, sender: 'ai', text: '', isTyping: true }]);
 
     try {
-        const aiText = await getGeminiResponse(text, emotion, currentTonePack, isLearningMode);
+        const accessToken = import.meta.env.VITE_CHATBOT_ACCESS_TOKEN;
+        if (!accessToken) {
+          throw new Error('ChatBot access token not found. Please check your .env file');
+        }
+        const aiText = await getChatbotResponse(text, emotion, currentTonePack, isLearningMode, accessToken);
         handleReward(emotion);
         const newAiMessage: ChatMessage = { 
             id: Date.now() + 2, 
@@ -316,8 +395,8 @@ const App: React.FC = () => {
         tonePacks={tonePacks}
         currentTonePack={currentTonePack}
         onTonePackChange={setCurrentTonePack}
-        onViewJournal={toggleJournalView}
-        showJournalButton={!showJournal}
+        onViewJournal={() => setShowJournal(true)}
+        showJournalButton={true}
       />
       <main className="flex-grow grid grid-cols-1 lg:grid-cols-3 gap-4 h-[calc(100vh-160px)]">
         <div className="lg:col-span-2 h-full">
@@ -380,7 +459,14 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-cover bg-center bg-no-repeat bg-fixed" style={{backgroundImage: "url('https://picsum.photos/seed/neuro/1920/1080')"}}>
       <div className="min-h-screen bg-black/50 backdrop-blur-sm flex flex-col p-4 gap-4 overflow-hidden">
-        {showJournal ? renderJournalView() : renderChatView()}
+        {showJournal ? (
+          <TherapyJournal 
+            entries={journalEntries} 
+            onBack={toggleJournalView} 
+          />
+        ) : (
+          renderChatView()
+        )}
       </div>
     </div>
   );

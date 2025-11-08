@@ -37,9 +37,13 @@ const SummaryModal: React.FC<SummaryModalProps> = ({ isOpen, onClose, onSave, is
     }
   }, [isOpen]);
 
-  const handleSave = () => {
-    onSave(notes);
+  const handleSave = async () => {
+    await onSave(notes);
     setIsSaved(true);
+    // Close the modal after a short delay to show the success message
+    setTimeout(() => {
+      onClose();
+    }, 1000);
   };
   const modalRef = useRef<HTMLDivElement>(null);
 
