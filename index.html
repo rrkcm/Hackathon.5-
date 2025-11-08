@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NeuroBridge</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+      :root {
+        --bg-color: #0a0910;
+        --text-color: #e0e0e0;
+        --text-muted-color: #9ca3af;
+        --glass-bg: rgba(255, 255, 255, 0.05);
+        --glass-border: rgba(255, 255, 255, 0.1);
+        --solid-bg-1: rgba(255, 255, 255, 0.05);
+        --solid-bg-2: rgba(0, 0, 0, 0.2);
+        --primary-glow-color: rgba(168, 85, 247, 0.7);
+        --secondary-glow-color: rgba(59, 130, 246, 0.7);
+        --focus-ring-color: #a78bfa;
+      }
+
+      body.high-contrast {
+        --bg-color: #000000;
+        --text-color: #ffffff;
+        --text-muted-color: #e0e0e0;
+        --glass-bg: #1a1a1a;
+        --glass-border: #ffffff;
+        --solid-bg-1: #2c2c2c;
+        --solid-bg-2: #1a1a1a;
+        --primary-glow-color: #ffffff;
+        --secondary-glow-color: #ffffff;
+      }
+
+      body {
+        font-family: 'Inter', sans-serif;
+        background-color: var(--bg-color);
+        color: var(--text-color);
+        transition: background-color 0.3s ease, color 0.3s ease;
+      }
+      .glassmorphism {
+        background: var(--glass-bg);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid var(--glass-border);
+        transition: background-color 0.3s ease, border-color 0.3s ease;
+      }
+      .high-contrast .glassmorphism {
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+        border-width: 2px;
+      }
+
+      .solid-bg-1 { background-color: var(--solid-bg-1); }
+      .solid-bg-2 { background-color: var(--solid-bg-2); }
+      
+      .neon-glow-blue {
+        box-shadow: 0 0 5px rgba(59, 130, 246, 0.8), 0 0 10px rgba(59, 130, 246, 0.6), 0 0 15px rgba(59, 130, 246, 0.4);
+      }
+      .neon-glow-purple {
+        box-shadow: 0 0 5px rgba(168, 85, 247, 0.8), 0 0 10px rgba(168, 85, 247, 0.6), 0 0 15px rgba(168, 85, 247, 0.4);
+      }
+      .high-contrast .neon-glow-blue, .high-contrast .neon-glow-purple {
+        box-shadow: none;
+      }
+
+       .text-glow-blue { text-shadow: 0 0 4px var(--secondary-glow-color); }
+       .text-glow-purple { text-shadow: 0 0 4px var(--primary-glow-color); }
+       .high-contrast .text-glow-blue, .high-contrast .text-glow-purple { text-shadow: none; }
+      
+      /* Keyboard Navigation Focus */
+      *:focus-visible {
+        outline: 2px solid var(--focus-ring-color);
+        outline-offset: 2px;
+        box-shadow: 0 0 10px var(--focus-ring-color);
+        border-radius: 4px;
+      }
+      
+      /* Custom scrollbar for a sleek look */
+      ::-webkit-scrollbar { width: 6px; }
+      ::-webkit-scrollbar-track { background: var(--solid-bg-1); }
+      ::-webkit-scrollbar-thumb { background: rgba(168, 85, 247, 0.5); border-radius: 3px; }
+      ::-webkit-scrollbar-thumb:hover { background: rgba(168, 85, 247, 0.8); }
+
+      /* Global Animation Keyframes & Classes */
+      @keyframes scale-in { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+      .animate-scale-in { animation: scale-in 0.3s ease-out forwards; }
+      @keyframes fade-in-up { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+      .animate-fade-in-up { animation: fade-in-up 0.5s ease-out forwards; }
+      @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+      .animate-fade-in { animation: fade-in 0.5s ease-out forwards; }
+      @keyframes glow-and-fade {
+        0% { transform: scale(0.5); opacity: 0; filter: brightness(2); }
+        50% { transform: scale(1.2); opacity: 1; filter: brightness(2.5); }
+        100% { transform: scale(1.5); opacity: 0; filter: brightness(1); }
+      }
+      .animate-glow-and-fade { animation: glow-and-fade 1.5s ease-out forwards; }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "recharts": "https://aistudiocdn.com/recharts@^3.3.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^0.14.0"
+  }
+}
+</script>
+</head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>

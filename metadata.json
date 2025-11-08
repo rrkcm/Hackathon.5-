@@ -1,0 +1,8 @@
+{
+  "name": "NeuroBridge: Final App",
+  "description": "An AI-powered web application to help specially-abled children learn better by combining emotional intelligence, adaptive teaching, and gamified learning.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
