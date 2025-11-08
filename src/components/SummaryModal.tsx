@@ -1,9 +1,11 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { RadialBarChart, RadialBar, Legend, ResponsiveContainer, Tooltip, PolarAngleAxis } from 'recharts';
 
 interface SummaryModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSave: (notes: string) => void;
+  isSaving?: boolean;
 }
 
 const summaryData = [
@@ -24,7 +26,21 @@ const CustomTooltip: React.FC<any> = ({ active, payload }) => {
     return null;
 };
 
-const SummaryModal: React.FC<SummaryModalProps> = ({ isOpen, onClose }) => {
+const SummaryModal: React.FC<SummaryModalProps> = ({ isOpen, onClose, onSave, isSaving = false }) => {
+  const [notes, setNotes] = useState('');
+  const [isSaved, setIsSaved] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setNotes('');
+      setIsSaved(false);
+    }
+  }, [isOpen]);
+
+  const handleSave = () => {
+    onSave(notes);
+    setIsSaved(true);
+  };
   const modalRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -83,6 +99,11 @@ const SummaryModal: React.FC<SummaryModalProps> = ({ isOpen, onClose }) => {
         <p className="text-gray-300 mb-6">Here is the emotional breakdown of your session.</p>
 
         <div className="w-full h-64 mb-6">
+          {isSaved && (
+            <div className="mb-4 p-3 bg-green-500/20 text-green-300 rounded-lg text-sm">
+              Journal entry saved successfully!
+            </div>
+          )}
           <ResponsiveContainer width="100%" height="100%">
             <RadialBarChart 
                 cx="50%" 
@@ -112,15 +133,47 @@ const SummaryModal: React.FC<SummaryModalProps> = ({ isOpen, onClose }) => {
           </ResponsiveContainer>
         </div>
 
+        <div className="mb-4">
+          <label htmlFor="journal-notes" className="block text-sm font-medium text-gray-300 mb-2">
+            Add notes to your journal (optional)
+          </label>
+          <textarea
+            id="journal-notes"
+            rows={3}
+            className="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+            placeholder="Add any additional notes about this session..."
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            disabled={isSaving || isSaved}
+          />
+        </div>
+
         <div className="flex justify-end gap-4">
           <button 
             onClick={onClose}
-            className="px-6 py-2 rounded-lg text-sm font-medium transition-colors duration-300 bg-white/10 hover:bg-white/20 text-white"
+            disabled={isSaving}
+            className="px-6 py-2 rounded-lg text-sm font-medium transition-colors duration-300 bg-white/10 hover:bg-white/20 text-white disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Start New Session
+            {isSaved ? 'Close' : 'Cancel'}
           </button>
-          <button className="px-6 py-2 rounded-lg text-sm font-semibold transition-all duration-300 bg-gradient-to-r from-blue-500 to-purple-600 hover:opacity-90 text-white neon-glow-purple">
-            Save to Therapy Journal
+          <button 
+            onClick={handleSave}
+            disabled={isSaving || isSaved}
+            className="px-6 py-2 rounded-lg text-sm font-semibold transition-all duration-300 bg-gradient-to-r from-blue-500 to-purple-600 hover:opacity-90 text-white disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+          >
+            {isSaving ? (
+              <>
+                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Saving...
+              </>
+            ) : isSaved ? (
+              'Saved!'
+            ) : (
+              'Save to Therapy Journal'
+            )}
           </button>
         </div>
       </div>

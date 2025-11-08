@@ -5,6 +5,7 @@ import MainPanel from './components/MainPanel';
 import SidePanel from './components/SidePanel';
 import BottomControls from './components/BottomControls';
 import SummaryModal from './components/SummaryModal';
+import TherapyJournal, { TherapyJournalEntry } from './components/TherapyJournal';
 import { EmotionState, AppMode, ChatMessage, TonePack } from './types';
 import { getGeminiResponse } from './services/gemini';
 
@@ -105,6 +106,9 @@ const App: React.FC = () => {
   const [showRewardAnimation, setShowRewardAnimation] = useState(false);
   const [isAiTyping, setIsAiTyping] = useState(false);
   const [interimTranscript, setInterimTranscript] = useState('');
+  const [journalEntries, setJournalEntries] = useState<TherapyJournalEntry[]>([]);
+  const [showJournal, setShowJournal] = useState(false);
+  const [isSavingJournal, setIsSavingJournal] = useState(false);
   
   const recognitionRef = useRef<any>(null);
 
@@ -112,6 +116,53 @@ const App: React.FC = () => {
   useEffect(() => {
     document.body.classList.toggle('high-contrast', isHighContrast);
   }, [isHighContrast]);
+
+  // Load saved journal entries from localStorage
+  useEffect(() => {
+    const savedEntries = localStorage.getItem('therapyJournalEntries');
+    if (savedEntries) {
+      try {
+        const parsedEntries = JSON.parse(savedEntries);
+        // Convert string dates back to Date objects
+        const entriesWithDates = parsedEntries.map((entry: any) => ({
+          ...entry,
+          date: new Date(entry.date)
+        }));
+        setJournalEntries(entriesWithDates);
+      } catch (error) {
+        console.error('Failed to parse saved journal entries', error);
+      }
+    }
+  }, []);
+
+  // Save journal entries to localStorage when they change
+  useEffect(() => {
+    if (journalEntries.length > 0) {
+      localStorage.setItem('therapyJournalEntries', JSON.stringify(journalEntries));
+    }
+  }, [journalEntries]);
+
+  const handleSaveJournalEntry = async (notes: string) => {
+    setIsSavingJournal(true);
+    
+    // Simulate API call delay
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    const newEntry: TherapyJournalEntry = {
+      id: Date.now().toString(),
+      date: new Date(),
+      emotion: currentEmotion,
+      summary: `Session with ${currentEmotion.name} mood`,
+      notes: notes || undefined,
+    };
+    
+    setJournalEntries(prev => [newEntry, ...prev]);
+    setIsSavingJournal(false);
+  };
+  
+  const toggleJournalView = () => {
+    setShowJournal(prev => !prev);
+  };
 
   // Simulate real-time emotion changes
   useEffect(() => {
@@ -259,57 +310,77 @@ const App: React.FC = () => {
     await processUserMessage(text, currentEmotion);
   };
 
+  const renderChatView = () => (
+    <>
+      <TopBar 
+        tonePacks={tonePacks}
+        currentTonePack={currentTonePack}
+        onTonePackChange={setCurrentTonePack}
+        onViewJournal={toggleJournalView}
+        showJournalButton={!showJournal}
+      />
+      <main className="flex-grow grid grid-cols-1 lg:grid-cols-3 gap-4 h-[calc(100vh-160px)]">
+        <div className="lg:col-span-2 h-full">
+          <MainPanel 
+            currentEmotion={currentEmotion}
+            activeMode={activeMode}
+            isCamOn={isCamOn}
+            isMirrorMode={isMirrorMode}
+            messages={messages}
+            onSendMessage={handleSendMessage}
+            starCount={starCount}
+            showRewardAnimation={showRewardAnimation}
+            isTtsEnabled={isTtsEnabled}
+            onReplayMessage={speakMessage}
+            isAiTyping={isAiTyping}
+            isListening={isListening}
+            interimTranscript={interimTranscript}
+          />
+        </div>
+        <div className="lg:col-span-1 h-full">
+          <SidePanel 
+            currentEmotion={currentEmotion} 
+            activeMode={activeMode}
+            setActiveMode={setActiveMode}
+          />
+        </div>
+      </main>
+      <BottomControls 
+        onEndConversation={() => setIsModalOpen(true)}
+        isMicOn={isListening}
+        onMicToggle={toggleListening}
+        isCamOn={isCamOn}
+        setIsCamOn={setIsCamOn}
+        isMirrorMode={isMirrorMode}
+        setIsMirrorMode={setIsMirrorMode}
+        isLearningMode={isLearningMode}
+        setIsLearningMode={setIsLearningMode}
+        isTtsEnabled={isTtsEnabled}
+        setIsTtsEnabled={setIsTtsEnabled}
+        isHighContrast={isHighContrast}
+        setIsHighContrast={setIsHighContrast}
+        activeMode={activeMode}
+      />
+      <SummaryModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)}
+        onSave={handleSaveJournalEntry}
+        isSaving={isSavingJournal}
+      />
+    </>
+  );
+
+  const renderJournalView = () => (
+    <TherapyJournal 
+      entries={journalEntries} 
+      onBack={toggleJournalView} 
+    />
+  );
+
   return (
     <div className="min-h-screen bg-cover bg-center bg-no-repeat bg-fixed" style={{backgroundImage: "url('https://picsum.photos/seed/neuro/1920/1080')"}}>
       <div className="min-h-screen bg-black/50 backdrop-blur-sm flex flex-col p-4 gap-4 overflow-hidden">
-        <TopBar 
-            tonePacks={tonePacks}
-            currentTonePack={currentTonePack}
-            onTonePackChange={setCurrentTonePack}
-        />
-        <main className="flex-grow grid grid-cols-1 lg:grid-cols-3 gap-4 h-[calc(100vh-160px)]">
-          <div className="lg:col-span-2 h-full">
-            <MainPanel 
-              currentEmotion={currentEmotion}
-              activeMode={activeMode}
-              isCamOn={isCamOn}
-              isMirrorMode={isMirrorMode}
-              messages={messages}
-              onSendMessage={handleSendMessage}
-              starCount={starCount}
-              showRewardAnimation={showRewardAnimation}
-              isTtsEnabled={isTtsEnabled}
-              onReplayMessage={speakMessage}
-              isAiTyping={isAiTyping}
-              isListening={isListening}
-              interimTranscript={interimTranscript}
-            />
-          </div>
-          <div className="lg:col-span-1 h-full">
-            <SidePanel 
-              currentEmotion={currentEmotion} 
-              activeMode={activeMode}
-              setActiveMode={setActiveMode}
-            />
-          </div>
-        </main>
-        <BottomControls 
-            onEndConversation={() => setIsModalOpen(true)}
-            isMicOn={isListening}
-            onMicToggle={toggleListening}
-            isCamOn={isCamOn}
-            setIsCamOn={setIsCamOn}
-            isMirrorMode={isMirrorMode}
-            setIsMirrorMode={setIsMirrorMode}
-            isLearningMode={isLearningMode}
-            setIsLearningMode={setIsLearningMode}
-            isTtsEnabled={isTtsEnabled}
-            setIsTtsEnabled={setIsTtsEnabled}
-            isHighContrast={isHighContrast}
-            setIsHighContrast={setIsHighContrast}
-            activeMode={activeMode}
-        />
-        <SummaryModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+        {showJournal ? renderJournalView() : renderChatView()}
       </div>
     </div>
   );

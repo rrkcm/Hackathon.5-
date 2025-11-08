@@ -6,9 +6,17 @@ interface TopBarProps {
     tonePacks: TonePack[];
     currentTonePack: TonePack;
     onTonePackChange: (pack: TonePack) => void;
+    onViewJournal?: () => void;
+    showJournalButton?: boolean;
 }
 
-const TopBar: React.FC<TopBarProps> = ({ tonePacks, currentTonePack, onTonePackChange }) => {
+const TopBar: React.FC<TopBarProps> = ({ 
+  tonePacks, 
+  currentTonePack, 
+  onTonePackChange, 
+  onViewJournal, 
+  showJournalButton = true 
+}) => {
   const [isOnline, setIsOnline] = useState(true);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -107,6 +115,16 @@ const TopBar: React.FC<TopBarProps> = ({ tonePacks, currentTonePack, onTonePackC
              </ul>
           </div>
         </div>
+        {showJournalButton && onViewJournal && (
+          <button
+            onClick={onViewJournal}
+            className="ml-4 px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-300 bg-white/10 hover:bg-white/20 text-white flex items-center"
+            aria-label="View therapy journal"
+          >
+            <span className="mr-2">📓</span>
+            Journal
+          </button>
+        )}
         <div className="flex items-center gap-2">
           <div className={`w-3 h-3 rounded-full transition-all duration-500 ${isOnline ? 'bg-blue-400 animate-pulse neon-glow-blue' : 'bg-gray-500'}`}></div>
           <span className={`text-sm font-medium ${isOnline ? 'text-blue-300' : 'text-gray-400'}`}>{isOnline ? 'AI Connected' : 'Offline'}</span>
