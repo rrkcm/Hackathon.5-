@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import VideoDisplay from './VideoDisplay';
-// Fix: Import ChatWindow as a named import to resolve module loading issue.
 import { ChatWindow } from './ChatWindow';
 import InsightsDashboard from './InsightsDashboard';
 import Gamification from './Gamification';
 import { MicIcon, StarIcon } from './icons';
 import { ChatMessage, EmotionState, AppMode } from '../types';
+import rewardEngine from '../services/rewardEngine';
 
 interface MainPanelProps {
   currentEmotion: EmotionState;
@@ -39,6 +39,78 @@ const MainPanel: React.FC<MainPanelProps> = ({
     interimTranscript
 }) => {
   const [tooltip, setTooltip] = useState<{ text: string; show: boolean }>({ text: '', show: false });
+  const activityStartTime = useRef<number | null>(null);
+  const lastInteractionTime = useRef<number>(Date.now());
+  const interactionCheckInterval = useRef<NodeJS.Timeout | null>(null);
+
+  // Track activity duration for rewards
+  useEffect(() => {
+    // Start tracking when component mounts or active mode changes
+    if (activeMode) {
+      activityStartTime.current = Date.now();
+      lastInteractionTime.current = Date.now();
+      
+      // Set up interaction checker to detect inactivity
+      interactionCheckInterval.current = setInterval(() => {
+        const now = Date.now();
+        // Consider user inactive after 30 seconds of no interaction
+        if (now - lastInteractionTime.current > 30000 && activityStartTime.current) {
+          // Record the activity duration before the break
+          const durationSec = Math.floor((lastInteractionTime.current - activityStartTime.current) / 1000);
+          if (durationSec > 10) { // Only record if they were active for at least 10 seconds
+            rewardEngine.recordEvent({
+              type: activeMode,
+              correct: true, // Assume correct for general interaction
+              durationSec: durationSec
+            });
+          }
+          // Reset the timer
+          activityStartTime.current = null;
+        }
+      }, 5000); // Check every 5 seconds
+    }
+
+    return () => {
+      // Clean up interval and record final activity duration
+      if (interactionCheckInterval.current) {
+        clearInterval(interactionCheckInterval.current);
+      }
+      
+      if (activityStartTime.current) {
+        const durationSec = Math.floor((Date.now() - activityStartTime.current) / 1000);
+        if (durationSec > 10) { // Only record if they were active for at least 10 seconds
+          rewardEngine.recordEvent({
+            type: activeMode,
+            correct: true, // Assume correct for general interaction
+            durationSec: durationSec
+          });
+        }
+      }
+    };
+  }, [activeMode]);
+
+  // Track user interactions to reset idle timer
+  const recordInteraction = () => {
+    const now = Date.now();
+    // If we were inactive, start a new activity session
+    if (!activityStartTime.current) {
+      activityStartTime.current = now;
+    }
+    lastInteractionTime.current = now;
+  };
+
+  // Handle sending messages with reward tracking
+  const handleSendMessage = (text: string) => {
+    recordInteraction();
+    onSendMessage(text);
+    
+    // Record a chat interaction
+    rewardEngine.recordEvent({
+      type: 'chat',
+      correct: true, // Assuming all sent messages are valid interactions
+      durationSec: 1 // Minimal duration for chat messages
+    });
+  };
 
   useEffect(() => {
     let newTooltipText = currentEmotion.tooltip;
@@ -102,13 +174,16 @@ const MainPanel: React.FC<MainPanelProps> = ({
   return (
     <div className="glassmorphism rounded-2xl p-4 h-full flex flex-col gap-4 relative">
       {showRewardAnimation && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-30">
-              <div className="animate-glow-and-fade">
-                  <StarIcon 
-                      className="w-24 h-24 text-yellow-300" 
-                      style={{ filter: 'drop-shadow(0 0 15px rgba(252, 211, 77, 0.8))' }}
-                  />
+          <div className="absolute bottom-4 right-4 flex items-center gap-2">
+            {showRewardAnimation && (
+              <div className="animate-bounce">
+                <StarIcon className="w-6 h-6 text-yellow-400" />
               </div>
+            )}
+            <div className="bg-black/50 text-white px-3 py-1 rounded-full text-sm flex items-center gap-1">
+              <StarIcon className="w-4 h-4 text-yellow-400" />
+              {rewardEngine.getXP()} XP
+            </div>
           </div>
       )}
       {activeMode === 'insights' ? (
@@ -126,16 +201,18 @@ const MainPanel: React.FC<MainPanelProps> = ({
             </div>
           </div>
           <div className={`flex-shrink-0 relative ${activeMode === 'chat' ? 'h-full' : 'h-2/5'}`}>
-            <ChatWindow 
-                messages={messages} 
-                onSendMessage={onSendMessage} 
+            <div onClick={recordInteraction} className="h-full">
+              <ChatWindow 
+                messages={messages}
+                onSendMessage={handleSendMessage}
                 currentEmotion={currentEmotion}
                 isTtsEnabled={isTtsEnabled}
                 onReplayMessage={onReplayMessage}
                 isAiTyping={isAiTyping}
                 isListening={isListening}
                 interimTranscript={interimTranscript}
-            />
+              />
+            </div>
             <Gamification starCount={starCount} />
           </div>
         </>
