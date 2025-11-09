@@ -1,133 +1,75 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { BrainIcon, ChevronDownIcon } from './icons';
-import { TonePack } from '../types';
+import React from 'react';
+import { EmotionState } from '../types';
 
 interface TopBarProps {
-    tonePacks: TonePack[];
-    currentTonePack: TonePack;
-    onTonePackChange: (pack: TonePack) => void;
-    onViewJournal?: () => void;
-    showJournalButton?: boolean;
+  currentEmotion: EmotionState;
+  onEmotionChange: (emotion: EmotionState) => void;
+  onJournalClick: () => void;
+  onProgressClick?: () => void;
+  showProgressButton?: boolean;
 }
 
-const TopBar: React.FC<TopBarProps> = ({ 
-  tonePacks, 
-  currentTonePack, 
-  onTonePackChange, 
-  onViewJournal, 
-  showJournalButton = true 
+const TopBar: React.FC<TopBarProps> = ({
+  currentEmotion,
+  onEmotionChange,
+  onJournalClick,
+  onProgressClick = () => {},
+  showProgressButton = false
 }) => {
-  const [isOnline, setIsOnline] = useState(true);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const buttonRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-        if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-            setIsDropdownOpen(false);
-        }
-    };
-    const handleKeyDown = (event: KeyboardEvent) => {
-        if (event.key === 'Escape') {
-            setIsDropdownOpen(false);
-            buttonRef.current?.focus();
-        }
-    };
-
-    if (isDropdownOpen) {
-        document.addEventListener('mousedown', handleClickOutside);
-        document.addEventListener('keydown', handleKeyDown);
-    }
-    
-    return () => {
-        document.removeEventListener('mousedown', handleClickOutside);
-        document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isDropdownOpen]);
-
-  const handleSelectPack = (pack: TonePack) => {
-    onTonePackChange(pack);
-    setIsDropdownOpen(false);
-    buttonRef.current?.focus();
+  // Emotion selection handler
+  const handleEmotionClick = () => {
+    // Cycle to the next emotion
+    const currentIndex = emotionCycle.findIndex(e => e.name === currentEmotion.name);
+    const nextIndex = (currentIndex + 1) % emotionCycle.length;
+    onEmotionChange(emotionCycle[nextIndex]);
   };
-  
-  const handleDropdownKeyDown = (e: React.KeyboardEvent<HTMLButtonElement | HTMLUListElement>) => {
-    if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        (dropdownRef.current?.querySelector('li:first-child button') as HTMLElement)?.focus();
-    }
-  };
-  
-  const handleItemKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
-    if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        const nextIndex = (index + 1) % tonePacks.length;
-        (dropdownRef.current?.querySelectorAll('li button')[nextIndex] as HTMLElement)?.focus();
-    } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        const prevIndex = (index - 1 + tonePacks.length) % tonePacks.length;
-        (dropdownRef.current?.querySelectorAll('li button')[prevIndex] as HTMLElement)?.focus();
-    }
-  };
+
+  const emotionCycle = [
+    { name: 'happy', emoji: '😊', color: '#4CAF50' },
+    { name: 'calm', emoji: '😌', color: '#2196F3' },
+    { name: 'neutral', emoji: '😐', color: '#9E9E9E' },
+    { name: 'sad', emoji: '😔', color: '#607D8B' },
+    { name: 'anxious', emoji: '😟', color: '#FF9800' },
+  ];
 
   return (
-    <header className="glassmorphism rounded-2xl p-4 flex justify-between items-center transition-all duration-300">
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center neon-glow-blue">
-            <BrainIcon className="w-6 h-6 text-white"/>
-        </div>
-        <h1 className="text-2xl font-bold text-white text-glow-purple">NeuroBridge</h1>
-      </div>
-      <div className="flex items-center gap-6">
-        <div className="relative" ref={dropdownRef}>
-          <button 
-            ref={buttonRef}
-            id="tone-pack-button"
-            aria-haspopup="true"
-            aria-expanded={isDropdownOpen}
-            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            onKeyDown={handleDropdownKeyDown}
-            className="flex items-center gap-2 text-sm text-gray-300 hover:text-white transition-colors duration-300 glassmorphism px-4 py-2 rounded-lg w-40 justify-between"
+    <header className="bg-white/10 backdrop-blur-md p-4 rounded-xl shadow-lg">
+      <div className="container mx-auto flex justify-between items-center">
+        <div className="flex items-center space-x-4">
+          <h1 className="text-2xl font-bold text-white">NeuroBridge</h1>
+          <button
+            onClick={handleEmotionClick}
+            className="w-10 h-10 rounded-full flex items-center justify-center text-2xl transition-all duration-300 hover:bg-white/20"
+            style={{ backgroundColor: `${currentEmotion.color}40` }}
+            aria-label="Change emotion"
           >
-            <span className="flex items-center gap-2">
-                <span>{currentTonePack.flag}</span>
-                <span>{currentTonePack.name}</span>
-            </span>
-            <ChevronDownIcon className={`w-4 h-4 transition-transform duration-300 ${isDropdownOpen ? 'rotate-180' : ''}`} />
+            {currentEmotion.emoji}
+          </button>
+        </div>
+        
+        <div className="flex items-center space-x-4">
+          <button
+            onClick={onJournalClick}
+            className="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
+          >
+            <span>📔</span>
+            <span>Journal</span>
           </button>
           
-          <div className={`absolute top-full right-0 mt-2 w-48 glassmorphism rounded-lg shadow-lg overflow-hidden z-20 transition-all duration-300 ease-in-out ${isDropdownOpen ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'}`}>
-             <ul role="menu" aria-orientation="vertical" aria-labelledby="tone-pack-button" onKeyDown={handleDropdownKeyDown}>
-                {tonePacks.map((pack, index) => (
-                    <li key={pack.id} role="presentation">
-                        <button 
-                            onClick={() => handleSelectPack(pack)}
-                            onKeyDown={(e) => handleItemKeyDown(e, index)}
-                            className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-white/10 focus:bg-white/20 transition-colors duration-200 flex items-center gap-2"
-                            role="menuitem"
-                        >
-                           <span>{pack.flag}</span> 
-                           <span>{pack.name}</span>
-                        </button>
-                    </li>
-                ))}
-             </ul>
+          {showProgressButton && (
+            <button
+              onClick={onProgressClick}
+              className="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
+            >
+              <span>📊</span>
+              <span>Progress</span>
+            </button>
+          )}
+          
+          <div className="flex items-center space-x-2">
+            <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+            <span className="text-sm text-gray-300">Connected</span>
           </div>
-        </div>
-        {showJournalButton && onViewJournal && (
-          <button
-            onClick={onViewJournal}
-            className="ml-4 px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-300 bg-white/10 hover:bg-white/20 text-white flex items-center"
-            aria-label="View therapy journal"
-          >
-            <span className="mr-2">📓</span>
-            Journal
-          </button>
-        )}
-        <div className="flex items-center gap-2">
-          <div className={`w-3 h-3 rounded-full transition-all duration-500 ${isOnline ? 'bg-blue-400 animate-pulse neon-glow-blue' : 'bg-gray-500'}`}></div>
-          <span className={`text-sm font-medium ${isOnline ? 'text-blue-300' : 'text-gray-400'}`}>{isOnline ? 'AI Connected' : 'Offline'}</span>
         </div>
       </div>
     </header>

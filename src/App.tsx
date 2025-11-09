@@ -6,6 +6,7 @@ import SidePanel from './components/SidePanel';
 import BottomControls from './components/BottomControls';
 import SummaryModal from './components/SummaryModal';
 import TherapyJournal, { TherapyJournalEntry } from './components/TherapyJournal';
+import ProgressGraph from './components/ProgressGraph';
 import { EmotionState, AppMode, ChatMessage, TonePack } from './types';
 import { getChatbotResponse } from './services/chatbot';
 
@@ -108,6 +109,7 @@ const App: React.FC = () => {
   const [interimTranscript, setInterimTranscript] = useState('');
   const [journalEntries, setJournalEntries] = useState<TherapyJournalEntry[]>([]);
   const [showJournal, setShowJournal] = useState(false);
+  const [showProgress, setShowProgress] = useState(false);
   const [isSavingJournal, setIsSavingJournal] = useState(false);
   
   const recognitionRef = useRef<any>(null);
@@ -235,9 +237,15 @@ const App: React.FC = () => {
     }
   };
   
-  const toggleJournalView = () => {
+  const toggleJournalView = useCallback(() => {
     setShowJournal(prev => !prev);
-  };
+    setShowProgress(false);
+  }, []);
+
+  const toggleProgressView = useCallback(() => {
+    setShowProgress(prev => !prev);
+    setShowJournal(false);
+  }, []);
 
   // Simulate real-time emotion changes
   useEffect(() => {
@@ -392,11 +400,11 @@ const App: React.FC = () => {
   const renderChatView = () => (
     <>
       <TopBar 
-        tonePacks={tonePacks}
-        currentTonePack={currentTonePack}
-        onTonePackChange={setCurrentTonePack}
-        onViewJournal={() => setShowJournal(true)}
-        showJournalButton={true}
+        currentEmotion={currentEmotion} 
+        onEmotionChange={setCurrentEmotion} 
+        onJournalClick={toggleJournalView}
+        onProgressClick={toggleProgressView}
+        showProgressButton={true}
       />
       <main className="flex-grow grid grid-cols-1 lg:grid-cols-3 gap-4 h-[calc(100vh-160px)]">
         <div className="lg:col-span-2 h-full">
@@ -464,6 +472,17 @@ const App: React.FC = () => {
             entries={journalEntries} 
             onBack={toggleJournalView} 
           />
+        ) : showProgress ? (
+          <div className="relative">
+            <button 
+              onClick={toggleProgressView}
+              className="absolute top-2 left-2 z-10 bg-white/20 hover:bg-white/30 text-white p-2 rounded-full transition-colors"
+              aria-label="Back to chat"
+            >
+              ← Back
+            </button>
+            <ProgressGraph />
+          </div>
         ) : (
           renderChatView()
         )}
